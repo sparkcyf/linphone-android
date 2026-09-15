@@ -86,6 +86,18 @@ class LinphoneApplication : Application(), SingletonImageLoader.Factory {
         )
         corePreferences.config = config
 
+        // linphonerc_default is copied only on a fresh install. Keep existing installations
+        // eligible for push when a new SparkTour SIP domain is added to the app.
+        val requiredPushDomains = arrayOf(
+            "sippush.sparktour.me",
+            "sippush-cu.sparktour.me"
+        )
+        val configuredPushDomains = corePreferences.pushNotificationCompatibleDomains
+        if (!configuredPushDomains.toSet().containsAll(requiredPushDomains.toSet())) {
+            corePreferences.pushNotificationCompatibleDomains =
+                (configuredPushDomains + requiredPushDomains).distinct().toTypedArray()
+        }
+
         val appName = context.getString(R.string.app_name)
         Factory.instance().setLoggerDomain(appName)
         Factory.instance().loggingService.setLogLevel(LogLevel.Message)
