@@ -66,6 +66,7 @@ class CoreContext
     constructor(val context: Context) : HandlerThread("Core Thread") {
     companion object {
         private const val TAG = "[Core Context]"
+        private const val SIP_PUSH_REGISTRATION_EXPIRES = 604800
     }
 
     lateinit var core: Core
@@ -700,6 +701,24 @@ class CoreContext
         audioManager.registerAudioDeviceCallback(audioDeviceCallback, coreThread)
 
         val accounts = core.accountList
+        val pushNotificationDomains = corePreferences.pushNotificationCompatibleDomains
+        for (account in accounts) {
+            val params = account.params
+            val domain = params.identityAddress?.domain
+            val usesSipPushDomain = domain != null && pushNotificationDomains.any {
+                it.equals(domain, ignoreCase = true)
+            }
+            if (usesSipPushDomain && params.expires != SIP_PUSH_REGISTRATION_EXPIRES) {
+                Log.w(
+                    "$TAG Updating registration expiry for SIP Push account " +
+                        "[${params.identityAddress?.asStringUriOnly()}] from [${params.expires}] " +
+                        "to [$SIP_PUSH_REGISTRATION_EXPIRES] seconds"
+                )
+                val updatedParams = params.clone()
+                updatedParams.expires = SIP_PUSH_REGISTRATION_EXPIRES
+                account.params = updatedParams
+            }
+        }
         if (core.defaultAccount == null && accounts.isNotEmpty()) {
             Log.e("$TAG No default account set but accounts list not empty!")
             val firstAccount = accounts.first()
